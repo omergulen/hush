@@ -1,0 +1,24 @@
+---
+description: Command output is compressed to save tokens. Follow breadcrumbs to drill down when detail is needed.
+alwaysApply: true
+---
+
+# Token Saver
+
+Command output is automatically compressed to save context window tokens. When output is trimmed, you'll see:
+
+```
+[Compressed: 340 lines trimmed]
+[Full output: git diff]
+[Hint: git diff <specific-file> for the file you need]
+```
+
+## How to work with compressed output
+
+- The summary is usually enough. Don't re-run commands "just in case."
+- If you need trimmed detail, follow the `[Hint:]` — get just the part you need, not the full output.
+- Examples:
+  - Large diff? -> `git diff src/specific-file.ts` not `git diff`
+  - Grep too many matches? -> narrow pattern or add path filters
+  - Test failure trace trimmed? -> re-run the single failing test
+  - Large file? -> `sed -n '80,120p' file` for the range you need
