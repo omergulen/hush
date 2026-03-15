@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run_tests.sh — Test suite for token-saver.
+# run_tests.sh — Test suite for hush.
 # Zero dependencies beyond bash and jq.
 #
 # Usage: ./test/run_tests.sh
@@ -128,7 +128,7 @@ assert_eq "pipe produces no output" "" "$output"
 echo ""
 echo "Hook: Bypass mechanism"
 
-output=$(run_hook "TOKEN_SAVER_BYPASS=1 git diff")
+output=$(run_hook "HUSH_BYPASS=1 git diff")
 assert_eq "bypass produces no output" "" "$output"
 
 echo ""
@@ -211,15 +211,15 @@ echo ""
 echo "Compress: Exit code preservation"
 
 # Successful command preserves exit 0
-TOKEN_SAVER_LOG=/dev/null "$COMPRESS" true 2>/dev/null
+HUSH_LOG=/dev/null "$COMPRESS" true 2>/dev/null
 assert_exit_code "true exits 0" 0 $?
 
 # Failed command preserves non-zero exit code
-TOKEN_SAVER_LOG=/dev/null "$COMPRESS" false 2>/dev/null
+HUSH_LOG=/dev/null "$COMPRESS" false 2>/dev/null
 assert_exit_code "false exits 1" 1 $?
 
 # Command not found
-TOKEN_SAVER_LOG=/dev/null "$COMPRESS" nonexistent_cmd_12345 2>/dev/null
+HUSH_LOG=/dev/null "$COMPRESS" nonexistent_cmd_12345 2>/dev/null
 ec=$?
 if [ "$ec" -ne 0 ]; then
     pass "nonexistent command exits non-zero ($ec)"
@@ -231,12 +231,12 @@ echo ""
 echo "Compress: Strategy output"
 
 # head_tail strategy — generate large output
-output=$(TOKEN_SAVER_LOG=/dev/null "$COMPRESS" seq 1 200 2>/dev/null)
+output=$(HUSH_LOG=/dev/null "$COMPRESS" seq 1 200 2>/dev/null)
 assert_contains "large seq output has breadcrumb" "[Compressed:" "$output"
 assert_contains "large seq output has full-output ref" "[Full output:" "$output"
 
 # Small output passes through
-output=$(TOKEN_SAVER_LOG=/dev/null "$COMPRESS" echo "hello world" 2>/dev/null)
+output=$(HUSH_LOG=/dev/null "$COMPRESS" echo "hello world" 2>/dev/null)
 assert_contains "small output passes through" "hello world" "$output"
 assert_not_contains "small output has no breadcrumb" "[Compressed:" "$output"
 
@@ -244,14 +244,14 @@ echo ""
 echo "Compress: Custom git handlers"
 
 # git status should work without doubled subcommand
-output=$(TOKEN_SAVER_LOG=/dev/null "$COMPRESS" git status 2>/dev/null)
+output=$(HUSH_LOG=/dev/null "$COMPRESS" git status 2>/dev/null)
 ec=$?
 assert_exit_code "git status exits 0" 0 "$ec"
 # Should NOT contain error about ambiguous argument "status"
 assert_not_contains "git status no ambiguous error" "ambiguous" "$output"
 
 # git log should work without doubled subcommand
-output=$(TOKEN_SAVER_LOG=/dev/null "$COMPRESS" git log 2>/dev/null)
+output=$(HUSH_LOG=/dev/null "$COMPRESS" git log 2>/dev/null)
 ec=$?
 assert_exit_code "git log exits 0" 0 "$ec"
 # Output should contain commit info (either oneline or full format depending on grep \b support)
@@ -263,17 +263,17 @@ echo ""
 echo "Compress: Strategy dispatch (verifies filters.conf parsing)"
 
 # git status custom handler should produce --short format (no "On branch" header)
-output=$(TOKEN_SAVER_LOG=/dev/null "$COMPRESS" git status 2>/dev/null)
+output=$(HUSH_LOG=/dev/null "$COMPRESS" git status 2>/dev/null)
 assert_not_contains "git status uses custom handler (no 'On branch')" "On branch" "$output"
 
 # git log custom handler should produce oneline format with breadcrumb
-output=$(TOKEN_SAVER_LOG=/dev/null "$COMPRESS" git log 2>/dev/null)
+output=$(HUSH_LOG=/dev/null "$COMPRESS" git log 2>/dev/null)
 assert_contains "git log uses custom handler" "Showing" "$output"
 
 echo ""
 echo "Compress: Breadcrumb format"
 
-output=$(TOKEN_SAVER_LOG=/dev/null "$COMPRESS" seq 1 200 2>/dev/null)
+output=$(HUSH_LOG=/dev/null "$COMPRESS" seq 1 200 2>/dev/null)
 assert_contains "breadcrumb has [Compressed:]" "[Compressed:" "$output"
 assert_contains "breadcrumb has [Full output:]" "[Full output:" "$output"
 
@@ -283,19 +283,19 @@ echo ""
 echo "Stats: Basic functionality"
 
 # Stats with no log file
-TMPLOG=$(mktemp "${TMPDIR:-/tmp}/token-saver-test.XXXXXX")
+TMPLOG=$(mktemp "${TMPDIR:-/tmp}/hush-test.XXXXXX")
 rm -f "$TMPLOG"
-output=$(TOKEN_SAVER_LOG="$TMPLOG" "$STATS" all 2>/dev/null)
+output=$(HUSH_LOG="$TMPLOG" "$STATS" all 2>/dev/null)
 assert_contains "no log shows message" "No log file found" "$output"
 
 # Stats with a log entry
 printf "2026-03-14T00:00:00Z\tgit diff\t10000\t2000\t8000\t2000\t80\n" > "$TMPLOG"
-output=$(TOKEN_SAVER_LOG="$TMPLOG" "$STATS" all 2>/dev/null)
+output=$(HUSH_LOG="$TMPLOG" "$STATS" all 2>/dev/null)
 assert_contains "stats shows invocations" "Invocations" "$output"
 assert_contains "stats shows compression" "Compression" "$output"
 
 # By-command mode
-output=$(TOKEN_SAVER_LOG="$TMPLOG" "$STATS" all --by-command 2>/dev/null)
+output=$(HUSH_LOG="$TMPLOG" "$STATS" all --by-command 2>/dev/null)
 assert_contains "by-command shows git diff" "git diff" "$output"
 
 rm -f "$TMPLOG"

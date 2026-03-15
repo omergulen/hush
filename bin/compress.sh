@@ -12,7 +12,7 @@ set -uo pipefail
 SELF="$(readlink -f "$0" 2>/dev/null || python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$0")"
 SCRIPT_DIR="$(cd "$(dirname "$SELF")" && pwd)"
 FILTERS_CONF="$SCRIPT_DIR/filters.conf"
-LOG_FILE="${TOKEN_SAVER_LOG:-$HOME/.claude/token-saver.log}"
+LOG_FILE="${HUSH_LOG:-$HOME/.claude/hush.log}"
 [ -f "$LOG_FILE" ] || { mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null; touch "$LOG_FILE" 2>/dev/null; }
 chmod 600 "$LOG_FILE" 2>/dev/null
 
@@ -285,7 +285,7 @@ dispatch() {
 
 # ─── tracking ───────────────────────────────────────────────────────────────
 
-TRACK_FILE=$(mktemp "${TMPDIR:-/tmp}/token-saver.XXXXXX" 2>/dev/null || echo "")
+TRACK_FILE=$(mktemp "${TMPDIR:-/tmp}/hush.XXXXXX" 2>/dev/null || echo "")
 trap 'rm -f "$TRACK_FILE"' EXIT
 
 track_original() {

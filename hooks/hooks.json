@@ -1,5 +1,5 @@
 {
-  "description": "Token Saver — compresses CLI output to save LLM context tokens",
+  "description": "Hush — compresses CLI output to save LLM context tokens",
   "hooks": {
     "PreToolUse": [
       {

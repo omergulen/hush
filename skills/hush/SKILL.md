@@ -1,13 +1,13 @@
 ---
-name: token-saver
+name: hush
 description: >-
   View token savings stats or add new compression filters.
   Use when the user asks about token savings, compression stats, or wants to add a filter.
 ---
 
-# Token Saver
+# Hush
 
-Manage the token-saver output compression system.
+Manage the hush output compression system.
 
 ## Stats
 
@@ -15,18 +15,18 @@ View token savings:
 
 ```bash
 # All time
-~/.token-saver/stats.sh all
+~/.hush/stats.sh all
 
 # Today only
-~/.token-saver/stats.sh today
+~/.hush/stats.sh today
 
 # Last 7 days, broken down by command
-~/.token-saver/stats.sh week --by-command
+~/.hush/stats.sh week --by-command
 ```
 
 ## Add a filter
 
-To compress a new command, append one line to `~/.token-saver/filters.conf`:
+To compress a new command, append one line to `~/.hush/filters.conf`:
 
 ```
 # Format: PATTERN | STRATEGY | ARGS
@@ -57,7 +57,7 @@ Follow the `[Hint:]` to drill down — don't re-run the full command.
 When full uncompressed output is needed, prefix the command:
 
 ```bash
-TOKEN_SAVER_BYPASS=1 git diff
+HUSH_BYPASS=1 git diff
 ```
 
 Use sparingly — only when compressed output is insufficient.

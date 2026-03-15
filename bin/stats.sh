@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# stats.sh — Token saver savings report.
-# Reads ~/.claude/token-saver.log and shows a summary.
+# stats.sh — Hush savings report.
+# Reads ~/.claude/hush.log and shows a summary.
 #
 # Usage: stats.sh [today|week|all] [--by-command]
 
 set -euo pipefail
 
-LOG_FILE="${TOKEN_SAVER_LOG:-$HOME/.claude/token-saver.log}"
+LOG_FILE="${HUSH_LOG:-$HOME/.claude/hush.log}"
 
 if [ ! -f "$LOG_FILE" ]; then
     echo "No log file found at $LOG_FILE"
-    echo "Token saver hasn't compressed anything yet."
+    echo "Hush hasn't compressed anything yet."
     exit 0
 fi
 
@@ -64,7 +64,7 @@ fmt() {
     printf "%'d" "$1" 2>/dev/null || printf "%d" "$1"
 }
 
-echo "Token Saver — $LABEL"
+echo "Hush — $LABEL"
 echo "═══════════════════════════════════════"
 echo "  Invocations:       $(fmt "$TOTAL_INVOCATIONS")"
 echo "  Original output:   $(fmt "$TOTAL_ORIGINAL") chars (~$(fmt $(( (TOTAL_ORIGINAL + 3) / 4 ))) tokens)"

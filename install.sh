@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh — One-command install for token-saver.
+# install.sh — One-command install for hush.
 #
 # Usage:
 #   ./install.sh              Install for Claude Code
@@ -7,7 +7,7 @@
 #   ./install.sh --status     Check installation
 #
 # What it does:
-#   1. Copies bin/ scripts to ~/.token-saver/
+#   1. Copies bin/ scripts to ~/.hush/
 #   2. Symlinks hook into ~/.claude/hooks/
 #   3. Patches ~/.claude/settings.json with the PreToolUse hook
 #   4. Installs the LLM instruction rule for Claude Code and Cursor
@@ -15,7 +15,7 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
-INSTALL_DIR="$HOME/.token-saver"
+INSTALL_DIR="$HOME/.hush"
 CLAUDE_HOOKS="$HOME/.claude/hooks"
 CLAUDE_SETTINGS="$HOME/.claude/settings.json"
 CLAUDE_MD="$HOME/.claude/CLAUDE.md"
@@ -32,26 +32,26 @@ fail() { echo -e "  ${RED}!${NC} $1"; }
 
 # ─── Uninstall ──────────────────────────────────────────────────────────────
 if [ "${1:-}" = "--uninstall" ]; then
-    echo "Uninstalling token-saver..."
+    echo "Uninstalling hush..."
 
     rm -rf "$INSTALL_DIR" && ok "Removed $INSTALL_DIR" || skip "Not found: $INSTALL_DIR"
-    rm -f "$CLAUDE_HOOKS/token-saver-hook.sh" "$CLAUDE_HOOKS/compress.sh" "$CLAUDE_HOOKS/filters.conf"
+    rm -f "$CLAUDE_HOOKS/hush-hook.sh" "$CLAUDE_HOOKS/compress.sh" "$CLAUDE_HOOKS/filters.conf"
     ok "Removed hook symlinks"
 
-    if [ -f "$CLAUDE_SETTINGS" ] && grep -q "token-saver-hook" "$CLAUDE_SETTINGS" 2>/dev/null; then
-        jq '.hooks.PreToolUse = [.hooks.PreToolUse[] | select(.hooks[0].command | contains("token-saver") | not)]' \
+    if [ -f "$CLAUDE_SETTINGS" ] && grep -q "hush-hook" "$CLAUDE_SETTINGS" 2>/dev/null; then
+        jq '.hooks.PreToolUse = [.hooks.PreToolUse[] | select(.hooks[0].command | contains("hush") | not)]' \
             "$CLAUDE_SETTINGS" > "${CLAUDE_SETTINGS}.tmp" && mv "${CLAUDE_SETTINGS}.tmp" "$CLAUDE_SETTINGS"
         ok "Removed hook from settings.json"
     fi
 
     if [ -f "$CLAUDE_MD" ]; then
-        grep -v '@TOKEN_SAVER.md' "$CLAUDE_MD" > "${CLAUDE_MD}.tmp" 2>/dev/null && mv "${CLAUDE_MD}.tmp" "$CLAUDE_MD"
+        grep -v '@HUSH.md' "$CLAUDE_MD" > "${CLAUDE_MD}.tmp" 2>/dev/null && mv "${CLAUDE_MD}.tmp" "$CLAUDE_MD"
     fi
-    rm -f "$HOME/.claude/TOKEN_SAVER.md"
+    rm -f "$HOME/.claude/HUSH.md"
     ok "Removed LLM instruction"
 
     # Cursor rule (if installed)
-    rm -f "$HOME/.cursor/rules/token-saver.mdc" 2>/dev/null
+    rm -f "$HOME/.cursor/rules/hush.mdc" 2>/dev/null
 
     echo ""
     echo "Done. Restart Claude Code for changes to take effect."
@@ -60,20 +60,20 @@ fi
 
 # ─── Status ─────────────────────────────────────────────────────────────────
 if [ "${1:-}" = "--status" ]; then
-    echo "Token Saver Status"
+    echo "Hush Status"
     echo "══════════════════"
 
     [ -d "$INSTALL_DIR" ] && ok "Installed at $INSTALL_DIR" || fail "Not installed"
-    [ -L "$CLAUDE_HOOKS/token-saver-hook.sh" ] && ok "Hook symlink exists" || fail "Hook symlink missing"
+    [ -L "$CLAUDE_HOOKS/hush-hook.sh" ] && ok "Hook symlink exists" || fail "Hook symlink missing"
 
-    if [ -f "$CLAUDE_SETTINGS" ] && grep -q "token-saver-hook" "$CLAUDE_SETTINGS" 2>/dev/null; then
+    if [ -f "$CLAUDE_SETTINGS" ] && grep -q "hush-hook" "$CLAUDE_SETTINGS" 2>/dev/null; then
         ok "Registered in settings.json"
     else
         fail "Not registered in settings.json"
     fi
 
-    if [ -f "$HOME/.claude/token-saver.log" ]; then
-        ENTRIES=$(wc -l < "$HOME/.claude/token-saver.log" | tr -d ' ')
+    if [ -f "$HOME/.claude/hush.log" ]; then
+        ENTRIES=$(wc -l < "$HOME/.claude/hush.log" | tr -d ' ')
         ok "Log has $ENTRIES entries"
     else
         skip "No log file yet (no compressions recorded)"
@@ -83,7 +83,7 @@ if [ "${1:-}" = "--status" ]; then
 fi
 
 # ─── Prereqs ────────────────────────────────────────────────────────────────
-echo "Installing token-saver..."
+echo "Installing hush..."
 echo ""
 
 if ! command -v jq &>/dev/null; then
@@ -107,7 +107,7 @@ chmod +x "$INSTALL_DIR"/*.sh
 echo ""
 echo "Claude Code hooks:"
 mkdir -p "$CLAUDE_HOOKS"
-for pair in "hook.sh:token-saver-hook.sh" "compress.sh:compress.sh" "filters.conf:filters.conf"; do
+for pair in "hook.sh:hush-hook.sh" "compress.sh:compress.sh" "filters.conf:filters.conf"; do
     src="$INSTALL_DIR/${pair%%:*}"
     target="$CLAUDE_HOOKS/${pair##*:}"
     if [ -L "$target" ] && [ "$(readlink "$target")" = "$src" ]; then
@@ -121,10 +121,10 @@ done
 # ─── Step 3: Patch settings.json ───────────────────────────────────────────
 echo ""
 echo "Settings:"
-HOOK_CMD="$CLAUDE_HOOKS/token-saver-hook.sh"
+HOOK_CMD="$CLAUDE_HOOKS/hush-hook.sh"
 HOOK_ENTRY='{"matcher":"Bash","hooks":[{"type":"command","command":"'"$HOOK_CMD"'"}]}'
 
-if [ -f "$CLAUDE_SETTINGS" ] && grep -q "token-saver-hook" "$CLAUDE_SETTINGS" 2>/dev/null; then
+if [ -f "$CLAUDE_SETTINGS" ] && grep -q "hush-hook" "$CLAUDE_SETTINGS" 2>/dev/null; then
     skip "Already registered in settings.json"
 else
     if [ -f "$CLAUDE_SETTINGS" ]; then
@@ -144,28 +144,28 @@ fi
 # ─── Step 4: LLM instruction ───────────────────────────────────────────────
 echo ""
 echo "LLM instruction:"
-cp "$REPO_DIR/rules/token-saver-instruction.md" "$HOME/.claude/TOKEN_SAVER.md"
-ok "Installed TOKEN_SAVER.md"
+cp "$REPO_DIR/rules/hush-instruction.md" "$HOME/.claude/HUSH.md"
+ok "Installed HUSH.md"
 
 if [ -f "$CLAUDE_MD" ]; then
-    if ! grep -q '@TOKEN_SAVER.md' "$CLAUDE_MD" 2>/dev/null; then
+    if ! grep -q '@HUSH.md' "$CLAUDE_MD" 2>/dev/null; then
         echo "" >> "$CLAUDE_MD"
-        echo "@TOKEN_SAVER.md" >> "$CLAUDE_MD"
-        ok "Added @TOKEN_SAVER.md reference to CLAUDE.md"
+        echo "@HUSH.md" >> "$CLAUDE_MD"
+        ok "Added @HUSH.md reference to CLAUDE.md"
     else
-        skip "@TOKEN_SAVER.md already in CLAUDE.md"
+        skip "@HUSH.md already in CLAUDE.md"
     fi
 else
-    echo "@TOKEN_SAVER.md" > "$CLAUDE_MD"
-    ok "Created CLAUDE.md with @TOKEN_SAVER.md"
+    echo "@HUSH.md" > "$CLAUDE_MD"
+    ok "Created CLAUDE.md with @HUSH.md"
 fi
 
 # ─── Step 5 (optional): Cursor rule ────────────────────────────────────────
 if [ -d "$HOME/.cursor/rules" ]; then
     echo ""
     echo "Cursor:"
-    cp "$REPO_DIR/rules/token-saver.mdc" "$HOME/.cursor/rules/token-saver.mdc"
-    ok "Installed token-saver.mdc rule"
+    cp "$REPO_DIR/rules/hush.mdc" "$HOME/.cursor/rules/hush.mdc"
+    ok "Installed hush.mdc rule"
 fi
 
 # ─── Done ───────────────────────────────────────────────────────────────────

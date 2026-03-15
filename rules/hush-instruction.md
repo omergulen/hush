@@ -1,9 +1,4 @@
----
-description: Command output is compressed to save tokens. Follow breadcrumbs to drill down when detail is needed.
-alwaysApply: true
----
-
-# Token Saver
+# Hush
 
 Command output is automatically compressed to save context window tokens. When output is trimmed, you'll see:
 
@@ -25,10 +20,10 @@ Command output is automatically compressed to save context window tokens. When o
 
 ## Bypass compression
 
-When you need full uncompressed output, prefix the command with `TOKEN_SAVER_BYPASS=1`:
+When you need full uncompressed output, prefix the command with `HUSH_BYPASS=1`:
 
 ```bash
-TOKEN_SAVER_BYPASS=1 git diff
+HUSH_BYPASS=1 git diff
 ```
 
 Use this sparingly — only when compressed output is insufficient for your task.

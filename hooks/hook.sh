@@ -40,7 +40,7 @@ CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null) || exit 
 [[ "$CMD" == *"("* ]] && exit 0
 
 # Bypass: let agents/users skip compression when full output is needed
-[[ "$CMD" == *"TOKEN_SAVER_BYPASS=1"* ]] && exit 0
+[[ "$CMD" == *"HUSH_BYPASS=1"* ]] && exit 0
 
 # Extract base command past env var prefixes (e.g., FOO=bar cmd args)
 BASE_CMD="$CMD"
@@ -87,7 +87,6 @@ case "$FIRST_WORD" in
         ;;
     # Python — only auto-approve module invocations (not arbitrary -c code)
     python|python3)
-        # Block python -c / python -m with no module (arbitrary code execution)
         case "$REST" in
             -c*) exit 0 ;;
         esac
@@ -110,7 +109,7 @@ cat <<HOOKEOF
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "allow",
-    "permissionDecisionReason": "token-saver: ${FIRST_WORD} output compression",
+    "permissionDecisionReason": "hush: ${FIRST_WORD} output compression",
     "updatedInput": {
       "command": $(echo "$REWRITTEN" | jq -Rs .)
     }

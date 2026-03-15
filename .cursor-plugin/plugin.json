@@ -1,0 +1,11 @@
+{
+  "name": "hush",
+  "displayName": "Hush",
+  "description": "Compresses CLI output to save LLM context window tokens. Only safe commands are auto-approved.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Ömer Gülen"
+  },
+  "keywords": ["compression", "context-window", "tokens", "cli", "output"],
+  "license": "MIT"
+}

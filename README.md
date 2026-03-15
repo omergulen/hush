@@ -1,4 +1,4 @@
-# token-saver
+# hush
 
 Compresses CLI output to save LLM context window tokens. Zero dependencies beyond bash and jq.
 
@@ -6,23 +6,24 @@ Works as a **Claude Code plugin**, **Cursor plugin**, or **standalone install**.
 
 ## Install
 
-### Claude Code (plugin)
+### Claude Code
 
 ```
-/install-plugin <org>/token-saver
+/plugin marketplace add omergulen/hush
+/plugin install hush@omergulen-hush
 ```
 
-### Cursor (plugin)
+### Cursor
 
 ```
-/add-plugin <org>/token-saver
+/add-plugin omergulen/hush
 ```
 
 ### Standalone (no plugin system)
 
 ```bash
-git clone <this-repo>
-cd token-saver
+git clone https://github.com/omergulen/hush.git
+cd hush
 ./install.sh
 ```
 
@@ -80,12 +81,12 @@ Strategies:
 ## Stats
 
 ```bash
-~/.token-saver/stats.sh today
-~/.token-saver/stats.sh week --by-command
+~/.hush/stats.sh today
+~/.hush/stats.sh week --by-command
 ```
 
 ```
-Token Saver — Last 7 days
+Hush — Last 7 days
 ═══════════════════════════════════════
   Invocations:       142
   Original output:   1,284,000 chars (~321,000 tokens)
@@ -101,7 +102,7 @@ Only commands in a known-safe allowlist are auto-approved and compressed. Unknow
 To bypass compression when you need full output:
 
 ```bash
-TOKEN_SAVER_BYPASS=1 git diff
+HUSH_BYPASS=1 git diff
 ```
 
 ## Why not rtk?
@@ -113,35 +114,41 @@ TOKEN_SAVER_BYPASS=1 git diff
 - **Opt-out telemetry** — daily usage analytics
 - **1.3M lines of Rust** — hard to audit
 
-token-saver gives ~80% of the savings in ~750 lines of auditable bash. No binary, no telemetry, no supply chain. Only safe commands are auto-approved.
+hush gives ~80% of the savings in ~800 lines of auditable bash. No binary, no telemetry, no supply chain. Only safe commands are auto-approved.
 
 ## Architecture
 
 ```
-token-saver/
+hush/
 ├── bin/
-│   ├── compress.sh    (310 lines)  Config-driven compression engine
-│   ├── filters.conf   (119 lines)  ~90 command patterns
-│   └── stats.sh       (97 lines)   Savings reporting
+│   ├── compress.sh    (~330 lines)  Config-driven compression engine
+│   ├── filters.conf   (119 lines)   ~90 command patterns
+│   └── stats.sh       (97 lines)    Savings reporting
 ├── hooks/
-│   ├── hooks.json                   Claude Code plugin hook config
-│   └── hook.sh                      Hook entry point (plugin + standalone)
+│   ├── hooks.json                    Claude Code plugin hook config
+│   └── hook.sh                       Hook entry point (plugin + standalone)
 ├── rules/
-│   ├── token-saver.mdc              Cursor rule (LLM instruction)
-│   └── token-saver-instruction.md   Claude Code rule (LLM instruction)
+│   ├── hush.mdc                      Cursor rule (LLM instruction)
+│   └── hush-instruction.md           Claude Code rule (LLM instruction)
 ├── skills/
-│   └── token-saver/SKILL.md         Stats & filter management skill
+│   └── hush/SKILL.md                 Stats & filter management skill
 ├── test/
-│   └── run_tests.sh                  Test suite (51 tests)
+│   └── run_tests.sh                  Test suite (61 tests)
+├── .claude-plugin/plugin.json        Claude Code plugin manifest
+├── .cursor-plugin/plugin.json        Cursor plugin manifest
 ├── install.sh                        Standalone installer
 └── README.md
 ```
 
 ## Uninstall
 
-Plugin: `/remove-plugin token-saver`
+Plugin: remove via your editor's plugin manager.
 
 Standalone: `./install.sh --uninstall`
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
