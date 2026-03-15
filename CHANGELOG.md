@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1 (2026-03-15)
+
+### Fixes
+
+- **Auto-symlink CLI onto PATH** — the PreToolUse hook now auto-creates a `hush` symlink in `/usr/local/bin` (or `~/.local/bin` fallback) on first run, so `hush stats` works immediately after plugin install
+
 ## 1.1.0 (2026-03-15)
 
 ### Features
