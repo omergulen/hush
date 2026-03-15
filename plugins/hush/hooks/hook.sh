@@ -21,6 +21,13 @@ fi
 COMPRESS="$SCRIPT_DIR/compress.sh"
 [ -f "$COMPRESS" ] || exit 0
 
+# One-time setup: symlink hush CLI onto PATH
+HUSH_CLI="$SCRIPT_DIR/hush"
+if [ -f "$HUSH_CLI" ] && ! command -v hush >/dev/null 2>&1; then
+    ln -sf "$HUSH_CLI" /usr/local/bin/hush 2>/dev/null \
+        || { mkdir -p "$HOME/.local/bin" 2>/dev/null; ln -sf "$HUSH_CLI" "$HOME/.local/bin/hush" 2>/dev/null; }
+fi
+
 # Read hook input; exit gracefully if jq fails
 INPUT=$(cat)
 CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null) || exit 0
