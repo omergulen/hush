@@ -51,3 +51,13 @@ When output is trimmed, the LLM sees breadcrumbs:
 ```
 
 Follow the `[Hint:]` to drill down — don't re-run the full command.
+
+## Bypass compression
+
+When full uncompressed output is needed, prefix the command:
+
+```bash
+TOKEN_SAVER_BYPASS=1 git diff
+```
+
+Use sparingly — only when compressed output is insufficient.

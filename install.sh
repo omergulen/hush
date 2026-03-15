@@ -95,10 +95,12 @@ fi
 # ─── Step 1: Copy scripts ──────────────────────────────────────────────────
 echo "Scripts:"
 mkdir -p "$INSTALL_DIR"
-for file in compress.sh hook.sh filters.conf stats.sh; do
+for file in compress.sh filters.conf stats.sh; do
     cp "$REPO_DIR/bin/$file" "$INSTALL_DIR/$file"
     ok "$INSTALL_DIR/$file"
 done
+cp "$REPO_DIR/hooks/hook.sh" "$INSTALL_DIR/hook.sh"
+ok "$INSTALL_DIR/hook.sh"
 chmod +x "$INSTALL_DIR"/*.sh
 
 # ─── Step 2: Hook symlinks ─────────────────────────────────────────────────

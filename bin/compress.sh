@@ -9,10 +9,12 @@
 
 set -uo pipefail
 
-SELF="$(readlink -f "$0" 2>/dev/null || python3 -c "import os; print(os.path.realpath('$0'))")"
+SELF="$(readlink -f "$0" 2>/dev/null || python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$0")"
 SCRIPT_DIR="$(cd "$(dirname "$SELF")" && pwd)"
 FILTERS_CONF="$SCRIPT_DIR/filters.conf"
 LOG_FILE="${TOKEN_SAVER_LOG:-$HOME/.claude/token-saver.log}"
+[ -f "$LOG_FILE" ] || { mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null; touch "$LOG_FILE" 2>/dev/null; }
+chmod 600 "$LOG_FILE" 2>/dev/null
 
 CMD="$1"
 shift
@@ -23,6 +25,9 @@ if [ -n "$ALL_ARGS" ]; then
 else
     FULL_CMD="$CMD"
 fi
+
+# Sanitize for safe logging (strip tabs/newlines that could corrupt TSV)
+FULL_CMD_LOG=$(printf '%s' "$FULL_CMD" | tr '\t\n' '  ')
 
 # ─── breadcrumb: always tell the LLM what was trimmed ───────────────────────
 breadcrumb() {
@@ -136,25 +141,37 @@ strategy_head_tail() {
 # ─── custom handlers (the few that need special logic) ──────────────────────
 
 custom_git_status() {
+    shift  # drop "status"
+    local original
+    original=$(git status "$@" 2>&1)
+    track_original "${#original}"
     git status --short "$@"
 }
 
 custom_git_log() {
+    shift  # drop "log"
     if [[ "$*" == *"--format"* ]] || [[ "$*" == *"--pretty"* ]] || [[ "$*" == *"-p"* ]]; then
         git log "$@"
     else
+        local original exit_code
+        original=$(git log "$@" 2>&1)
+        exit_code=$?
+        track_original "${#original}"
         git log --oneline -20 "$@"
         local total
         total=$(git rev-list --count HEAD 2>/dev/null || echo "?")
         echo ""
         echo "[Showing 20 of ${total} commits]"
         echo "[Detail: git log -p <commit> | git show <commit>]"
+        return "$exit_code"
     fi
 }
 
 custom_git_diff() {
-    local output
+    shift  # drop "diff"
+    local output exit_code
     output=$(git diff "$@" 2>&1)
+    exit_code=$?
     track_original "${#output}"
     local line_count
     line_count=$(echo "$output" | wc -l | tr -d ' ')
@@ -168,6 +185,7 @@ custom_git_diff() {
         echo "[Full diff is ${line_count} lines across ${file_count} files]"
         echo "[Detail: git diff <specific-file>]"
     fi
+    return "$exit_code"
 }
 
 # ─── config reader & dispatcher ─────────────────────────────────────────────
@@ -178,13 +196,26 @@ dispatch() {
         return $?
     fi
 
-    while IFS='|' read -r pattern strategy args; do
-        pattern=$(echo "$pattern" | xargs)
-        [ -z "$pattern" ] && continue
-        [[ "$pattern" == \#* ]] && continue
+    while IFS= read -r line; do
+        # Skip comments and blank lines
+        line="${line#"${line%%[![:space:]]*}"}"
+        [ -z "$line" ] && continue
+        [[ "$line" == \#* ]] && continue
 
-        strategy=$(echo "$strategy" | xargs)
-        args=$(echo "$args" | xargs)
+        # Split on ' | ' (space-pipe-space) to preserve | in regex patterns
+        pattern=$(echo "$line" | awk -F' +\\| +' '{print $1}')
+        strategy=$(echo "$line" | awk -F' +\\| +' '{print $2}')
+        args=$(echo "$line" | awk -F' +\\| +' '{print $3}')
+
+        # Trim whitespace with pure bash (no xargs — xargs mangles \b \s \d)
+        pattern="${pattern#"${pattern%%[![:space:]]*}"}"
+        pattern="${pattern%"${pattern##*[![:space:]]}"}"
+        strategy="${strategy#"${strategy%%[![:space:]]*}"}"
+        strategy="${strategy%"${strategy##*[![:space:]]}"}"
+        args="${args#"${args%%[![:space:]]*}"}"
+        args="${args%"${args##*[![:space:]]}"}"
+
+        [ -z "$pattern" ] && continue
 
         if echo "$FULL_CMD" | grep -qE "$pattern" 2>/dev/null; then
             case "$strategy" in
@@ -254,7 +285,7 @@ dispatch() {
 
 # ─── tracking ───────────────────────────────────────────────────────────────
 
-TRACK_FILE=$(mktemp /tmp/token-saver.XXXXXX 2>/dev/null || echo "")
+TRACK_FILE=$(mktemp "${TMPDIR:-/tmp}/token-saver.XXXXXX" 2>/dev/null || echo "")
 trap 'rm -f "$TRACK_FILE"' EXIT
 
 track_original() {
@@ -291,7 +322,7 @@ if [ -n "$TRACK_FILE" ] && [ -f "$TRACK_FILE" ]; then
     if [ "$saved" -gt 100 ] && [ "$original_chars" -gt 0 ]; then
         pct=$(( saved * 100 / original_chars ))
         if [ "$pct" -gt 5 ]; then
-            log_savings "$original_chars" "$compressed_chars" "$FULL_CMD"
+            log_savings "$original_chars" "$compressed_chars" "$FULL_CMD_LOG"
         fi
     fi
 fi

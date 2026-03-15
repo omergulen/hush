@@ -87,7 +87,7 @@ if [ "$BY_CMD" = "--by-command" ]; then
         orig[cmd]+=$3
     } END {
         for (cmd in count) {
-            pct = (orig[cmd] > 0) ? int(saved[cmd] * 4 * 100 / orig[cmd]) : 0
+            pct = (orig[cmd] > 0) ? int(saved[cmd] * 100 / orig[cmd]) : 0
             printf "  %-30s %8d %10d %4d%%\n", cmd, count[cmd], saved[cmd], pct
         }
     }' | sort -t$'\t' -k3 -rn | head -15

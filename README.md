@@ -94,16 +94,26 @@ Token Saver — Last 7 days
   Compression:       85%
 ```
 
+## Security model
+
+Only commands in a known-safe allowlist are auto-approved and compressed. Unknown or potentially dangerous commands (e.g., `rm`, `curl`, `chmod`) pass through Claude Code's normal permission flow without compression.
+
+To bypass compression when you need full output:
+
+```bash
+TOKEN_SAVER_BYPASS=1 git diff
+```
+
 ## Why not rtk?
 
 [rtk-ai/rtk](https://github.com/rtk-ai/rtk) does the same thing in Rust with ~120 commands. But:
 
-- **Auto-approves commands** — bypasses Claude Code's permission system
+- **Auto-approves ALL commands** — bypasses Claude Code's permission system entirely
 - **Third-party binary** — supply chain risk if maintainers go malicious
 - **Opt-out telemetry** — daily usage analytics
 - **1.3M lines of Rust** — hard to audit
 
-token-saver gives ~80% of the savings in ~750 lines of auditable bash. No binary, no telemetry, no supply chain.
+token-saver gives ~80% of the savings in ~750 lines of auditable bash. No binary, no telemetry, no supply chain. Only safe commands are auto-approved.
 
 ## Architecture
 
@@ -111,17 +121,18 @@ token-saver gives ~80% of the savings in ~750 lines of auditable bash. No binary
 token-saver/
 ├── bin/
 │   ├── compress.sh    (310 lines)  Config-driven compression engine
-│   ├── hook.sh        (92 lines)   Standalone hook (for manual install)
 │   ├── filters.conf   (119 lines)  ~90 command patterns
 │   └── stats.sh       (97 lines)   Savings reporting
 ├── hooks/
 │   ├── hooks.json                   Claude Code plugin hook config
-│   └── hook.sh                      Plugin-aware hook entry point
+│   └── hook.sh                      Hook entry point (plugin + standalone)
 ├── rules/
 │   ├── token-saver.mdc              Cursor rule (LLM instruction)
 │   └── token-saver-instruction.md   Claude Code rule (LLM instruction)
 ├── skills/
 │   └── token-saver/SKILL.md         Stats & filter management skill
+├── test/
+│   └── run_tests.sh                  Test suite (51 tests)
 ├── install.sh                        Standalone installer
 └── README.md
 ```
