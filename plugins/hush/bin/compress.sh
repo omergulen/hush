@@ -13,6 +13,7 @@ SELF="$(readlink -f "$0" 2>/dev/null || python3 -c "import os,sys; print(os.path
 SCRIPT_DIR="$(cd "$(dirname "$SELF")" && pwd)"
 FILTERS_CONF="$SCRIPT_DIR/filters.conf"
 LOG_FILE="${HUSH_LOG:-$HOME/.claude/hush.log}"
+TEE_FILE="${HUSH_TEE_FILE:-${TMPDIR:-/tmp}/hush-last-fail.txt}"
 [ -f "$LOG_FILE" ] || { mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null; touch "$LOG_FILE" 2>/dev/null; }
 chmod 600 "$LOG_FILE" 2>/dev/null
 
@@ -29,6 +30,93 @@ fi
 # Sanitize for safe logging (strip tabs/newlines that could corrupt TSV)
 FULL_CMD_LOG=$(printf '%s' "$FULL_CMD" | tr '\t\n' '  ')
 
+# ─── tee mode: save full output on failure ───────────────────────────────────
+tee_on_fail() {
+    local output="$1" exit_code="$2"
+    if [ "$exit_code" -ne 0 ] || [ "${HUSH_TEE:-}" = "always" ]; then
+        printf '%s' "$output" > "$TEE_FILE" 2>/dev/null
+        chmod 600 "$TEE_FILE" 2>/dev/null
+    fi
+}
+
+# ─── dedup: collapse consecutive similar lines ──────────────────────────────
+dedup_output() {
+    awk '
+    {
+        # Normalize: strip numbers, hashes, UUIDs for comparison
+        normalized = $0
+        gsub(/[0-9a-f]{7,}/, "HASH", normalized)
+        gsub(/[0-9]+(\.[0-9]+)*/, "N", normalized)
+        gsub(/[[:space:]]+/, " ", normalized)
+
+        if (normalized == prev_normalized && NR > 1) {
+            count++
+            last_line = $0
+        } else {
+            if (count > 2) {
+                printf "  ... (%d similar lines collapsed)\n", count
+                print last_line
+            } else if (count == 2) {
+                print last_line
+            }
+            print
+            count = 1
+            last_line = $0
+            prev_normalized = normalized
+        }
+    }
+    END {
+        if (count > 2) {
+            printf "  ... (%d similar lines collapsed)\n", count
+            print last_line
+        } else if (count == 2) {
+            print last_line
+        }
+    }'
+}
+
+# ─── JSON schema: detect JSON and show shape instead of raw data ─────────────
+try_json_schema() {
+    local output="$1"
+    local line_count="$2"
+
+    # Only attempt if output looks like JSON and jq is available
+    local first_char
+    first_char=$(printf '%s' "$output" | head -c1)
+    if [[ "$first_char" != "{" && "$first_char" != "[" ]]; then
+        return 1
+    fi
+    command -v jq >/dev/null 2>&1 || return 1
+
+    # Validate it's actual JSON
+    printf '%s' "$output" | jq empty 2>/dev/null || return 1
+
+    # Extract schema
+    local schema
+    schema=$(printf '%s' "$output" | jq -r '
+        def schema:
+            if type == "array" then
+                if length == 0 then "[]"
+                else "[\(length) items] \(.[0] | schema)"
+                end
+            elif type == "object" then
+                "{ " + ([to_entries[] | .key + ": " + (.value | schema)] | join(", ")) + " }"
+            else type
+            end;
+        schema
+    ' 2>/dev/null) || return 1
+
+    [ -z "$schema" ] && return 1
+
+    echo "$schema"
+    echo ""
+    echo "[Compressed: ${line_count} lines of JSON]"
+    echo "[Full output: ${FULL_CMD}]"
+    echo "[Hint: ${FULL_CMD} | jq 'keys']"
+    echo "[Hint: ${FULL_CMD} | jq '.[0]']"
+    return 0
+}
+
 # ─── breadcrumb: always tell the LLM what was trimmed ───────────────────────
 breadcrumb() {
     local trimmed="$1"
@@ -38,6 +126,10 @@ breadcrumb() {
     echo "[Compressed: ${trimmed} lines trimmed]"
     echo "[Full output: ${FULL_CMD}]"
     [ -n "$hint" ] && echo "[Hint: ${hint}]"
+    # Tee mode breadcrumb
+    if [ -f "$TEE_FILE" ] && [ -s "$TEE_FILE" ]; then
+        echo "[Full output saved: ${TEE_FILE}]"
+    fi
 }
 
 # ─── strategies ─────────────────────────────────────────────────────────────
@@ -49,6 +141,7 @@ strategy_strip_lines() {
     output=$("$CMD" "$@" 2>&1)
     exit_code=$?
     track_original "${#output}"
+    tee_on_fail "$output" "$exit_code"
     local before after
     before=$(echo "$output" | wc -l | tr -d ' ')
     local filtered
@@ -66,6 +159,7 @@ strategy_success_summary() {
     output=$("$CMD" "$@" 2>&1)
     exit_code=$?
     track_original "${#output}"
+    tee_on_fail "$output" "$exit_code"
     local line_count
     line_count=$(echo "$output" | wc -l | tr -d ' ')
 
@@ -101,6 +195,7 @@ strategy_tail_only() {
     output=$("$CMD" "$@" 2>&1)
     exit_code=$?
     track_original "${#output}"
+    tee_on_fail "$output" "$exit_code"
     local line_count
     line_count=$(echo "$output" | wc -l | tr -d ' ')
 
@@ -121,6 +216,7 @@ strategy_head_tail() {
     output=$("$CMD" "$@" 2>&1)
     exit_code=$?
     track_original "${#output}"
+    tee_on_fail "$output" "$exit_code"
     local line_count
     line_count=$(echo "$output" | wc -l | tr -d ' ')
     local threshold=$((head_n + tail_n + 10))
@@ -262,23 +358,47 @@ dispatch() {
         fi
     done < "$FILTERS_CONF"
 
-    # No matching rule — generic head/tail for large output, passthrough for small
+    # No matching rule — try JSON schema, then generic head/tail, passthrough for small
     local output exit_code
     output=$("$CMD" "$@" 2>&1)
     exit_code=$?
     track_original "${#output}"
+    tee_on_fail "$output" "$exit_code"
     local line_count
     line_count=$(echo "$output" | wc -l | tr -d ' ')
 
     if [ "$line_count" -le 100 ]; then
         echo "$output"
+    elif [ "$line_count" -gt 50 ] && try_json_schema "$output" "$line_count" 2>/dev/null; then
+        # JSON schema handler succeeded — output already printed
+        :
     else
-        echo "$output" | head -60
-        echo ""
-        echo "... [middle trimmed] ..."
-        echo ""
-        echo "$output" | tail -20
-        breadcrumb "$((line_count - 80))"
+        # Apply dedup then head/tail
+        local deduped deduped_count
+        deduped=$(echo "$output" | dedup_output)
+        deduped_count=$(echo "$deduped" | wc -l | tr -d ' ')
+        if [ "$deduped_count" -lt "$((line_count - 10))" ]; then
+            # Dedup was effective — show deduped output (may still need head/tail)
+            if [ "$deduped_count" -le 100 ]; then
+                echo "$deduped"
+                breadcrumb "$((line_count - deduped_count))" "similar lines collapsed"
+            else
+                echo "$deduped" | head -60
+                echo ""
+                echo "... [middle trimmed] ..."
+                echo ""
+                echo "$deduped" | tail -20
+                breadcrumb "$((line_count - 80))" "similar lines collapsed + trimmed"
+            fi
+        else
+            # No significant dedup — plain head/tail
+            echo "$output" | head -60
+            echo ""
+            echo "... [middle trimmed] ..."
+            echo ""
+            echo "$output" | tail -20
+            breadcrumb "$((line_count - 80))"
+        fi
     fi
     return "$exit_code"
 }

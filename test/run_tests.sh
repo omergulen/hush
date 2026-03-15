@@ -343,6 +343,76 @@ else
     fail "compress.sh uses TMPDIR" "not found"
 fi
 
+# ─── Tee mode tests ─────────────────────────────────────────────────────
+
+echo ""
+echo "Tee mode: Save full output on failure"
+
+TEE_FILE="${TMPDIR:-/tmp}/hush-test-tee.txt"
+rm -f "$TEE_FILE"
+HUSH_LOG=/dev/null HUSH_TEE_FILE="$TEE_FILE" "$COMPRESS" false 2>/dev/null || true
+if [ -f "$TEE_FILE" ]; then
+    pass "tee file created on failure"
+else
+    fail "tee file created on failure" "file not found"
+fi
+rm -f "$TEE_FILE"
+
+# Tee file NOT created on success
+HUSH_LOG=/dev/null HUSH_TEE_FILE="$TEE_FILE" "$COMPRESS" true 2>/dev/null
+if [ -f "$TEE_FILE" ]; then
+    fail "tee file not created on success" "file exists"
+    rm -f "$TEE_FILE"
+else
+    pass "tee file not created on success"
+fi
+
+# ─── Dedup tests ────────────────────────────────────────────────────────
+
+echo ""
+echo "Dedup: Collapse repeated lines"
+
+# Generate repetitive output (>100 lines) and compress it
+output=$(HUSH_LOG=/dev/null "$COMPRESS" bash -c 'for i in $(seq 1 150); do echo "Downloading layer abc${i}... ${i}.0MB"; done; echo "Done"' 2>/dev/null)
+assert_contains "dedup collapses repeated lines" "similar lines collapsed" "$output"
+
+# ─── JSON schema tests ──────────────────────────────────────────────────
+
+echo ""
+echo "JSON schema: Auto-detect and show shape"
+
+# Generate multi-line JSON (>100 lines) via python and compress with a non-filter command
+TMPJSON=$(mktemp "${TMPDIR:-/tmp}/hush-json-test.XXXXXX")
+python3 -c "import json; print(json.dumps([{'id':i,'name':f'item{i}','status':'ok'} for i in range(200)], indent=2))" > "$TMPJSON"
+output=$(HUSH_LOG=/dev/null "$COMPRESS" head -9999 "$TMPJSON" 2>/dev/null)
+rm -f "$TMPJSON"
+assert_contains "json schema detects JSON" "items" "$output"
+assert_contains "json schema shows hint" "jq" "$output"
+
+# ─── CLI wrapper tests ──────────────────────────────────────────────────
+
+echo ""
+echo "CLI: hush wrapper"
+
+HUSH="$PLUGIN_DIR/bin/hush"
+
+output=$("$HUSH" help 2>/dev/null)
+assert_contains "hush help works" "stats" "$output"
+assert_contains "hush help shows discover" "discover" "$output"
+assert_contains "hush help shows filters" "filters" "$output"
+
+output=$("$HUSH" filters list 2>/dev/null)
+assert_contains "hush filters list works" "active rules" "$output"
+
+output=$("$HUSH" filters test "git status" 2>/dev/null)
+assert_contains "hush filters test matches" "MATCH" "$output"
+
+output=$("$HUSH" filters test "unknown-command" 2>/dev/null)
+assert_contains "hush filters test no match" "generic" "$output"
+
+output=$("$HUSH" status 2>/dev/null)
+assert_contains "hush status works" "Filters" "$output"
+
 # ─── Summary ─────────────────────────────────────────────────────────────
 
 echo ""

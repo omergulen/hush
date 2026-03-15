@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+# hush — CLI entry point for the hush output compression system.
+#
+# Usage:
+#   hush stats [today|week|all] [--by-command]
+#   hush discover [--min-runs N] [--min-tokens N]
+#   hush filters list
+#   hush filters add <pattern> <strategy> <args>
+#   hush filters test <command>
+#   hush status
+#   hush help
+
+set -euo pipefail
+
+SELF="$(readlink -f "$0" 2>/dev/null || python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$0")"
+SCRIPT_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+FILTERS_CONF="$SCRIPT_DIR/filters.conf"
+
+cmd="${1:-help}"
+shift 2>/dev/null || true
+
+case "$cmd" in
+    discover)
+        exec "$SCRIPT_DIR/discover.sh" "$@"
+        ;;
+    filters)
+        subcmd="${1:-list}"
+        shift 2>/dev/null || true
+        case "$subcmd" in
+            add)
+                if [ $# -lt 2 ]; then
+                    echo "Usage: hush filters add <pattern> <strategy> [args]"
+                    echo "Example: hush filters add '^my-command\\b' success_summary 10"
+                    exit 1
+                fi
+                pattern="$1"
+                strategy="$2"
+                args="${3:-}"
+                printf '%-40s | %-16s | %s\n' "$pattern" "$strategy" "$args" >> "$FILTERS_CONF"
+                echo "Added filter: $pattern | $strategy | $args"
+                ;;
+            list)
+                if [ ! -f "$FILTERS_CONF" ]; then
+                    echo "No filters.conf found at $FILTERS_CONF"
+                    exit 1
+                fi
+                echo "Hush Filters ($FILTERS_CONF)"
+                echo "═══════════════════════════════════════"
+                grep -v '^#' "$FILTERS_CONF" | grep -v '^$' | while IFS= read -r line; do
+                    echo "  $line"
+                done
+                echo ""
+                echo "$(grep -cv '^#\|^$' "$FILTERS_CONF") active rules"
+                ;;
+            test)
+                if [ $# -lt 1 ]; then
+                    echo "Usage: hush filters test <command>"
+                    exit 1
+                fi
+                test_cmd="$*"
+                echo "Testing: $test_cmd"
+                echo ""
+                matched=0
+                while IFS= read -r line; do
+                    line="${line#"${line%%[![:space:]]*}"}"
+                    [ -z "$line" ] && continue
+                    [[ "$line" == \#* ]] && continue
+                    pattern=$(echo "$line" | awk -F' +\\| +' '{print $1}')
+                    strategy=$(echo "$line" | awk -F' +\\| +' '{print $2}')
+                    pattern="${pattern#"${pattern%%[![:space:]]*}"}"
+                    pattern="${pattern%"${pattern##*[![:space:]]}"}"
+                    strategy="${strategy#"${strategy%%[![:space:]]*}"}"
+                    strategy="${strategy%"${strategy##*[![:space:]]}"}"
+                    if echo "$test_cmd" | grep -qE "$pattern" 2>/dev/null; then
+                        echo "  MATCH: $pattern -> $strategy"
+                        matched=1
+                        break
+                    fi
+                done < "$FILTERS_CONF"
+                if [ "$matched" -eq 0 ]; then
+                    echo "  No matching rule — would use generic head/tail compression"
+                fi
+                ;;
+            *)
+                echo "Usage: hush filters [add|list|test]"
+                exit 1
+                ;;
+        esac
+        ;;
+    stats)
+        exec "$SCRIPT_DIR/stats.sh" "$@"
+        ;;
+    status)
+        echo "Hush Status"
+        echo "══════════════════"
+        # Check log
+        LOG_FILE="${HUSH_LOG:-$HOME/.claude/hush.log}"
+        if [ -f "$LOG_FILE" ]; then
+            entries=$(wc -l < "$LOG_FILE" | tr -d ' ')
+            echo "  + Log: $LOG_FILE ($entries entries)"
+        else
+            echo "  - No log file yet"
+        fi
+        # Check filters
+        if [ -f "$FILTERS_CONF" ]; then
+            rules=$(grep -cv '^#\|^$' "$FILTERS_CONF")
+            echo "  + Filters: $FILTERS_CONF ($rules rules)"
+        else
+            echo "  ! Filters not found"
+        fi
+        # Check tee file
+        TEE_FILE="${HUSH_TEE_FILE:-${TMPDIR:-/tmp}/hush-last-fail.txt}"
+        if [ -f "$TEE_FILE" ]; then
+            size=$(wc -c < "$TEE_FILE" | tr -d ' ')
+            echo "  + Last failure saved: $TEE_FILE ($size bytes)"
+        fi
+        ;;
+    help|--help|-h)
+        echo "hush — CLI output compression for LLMs"
+        echo ""
+        echo "Usage:"
+        echo "  hush stats [today|week|all] [--by-command]   View token savings"
+        echo "  hush discover                                 Find optimization opportunities"
+        echo "  hush filters list                             Show active compression rules"
+        echo "  hush filters add <pat> <strategy> [args]      Add a new rule"
+        echo "  hush filters test <command>                   Test which rule matches"
+        echo "  hush status                                   Check installation health"
+        echo "  hush help                                     Show this help"
+        ;;
+    *)
+        echo "Unknown command: $cmd"
+        echo "Run 'hush help' for usage."
+        exit 1
+        ;;
+esac

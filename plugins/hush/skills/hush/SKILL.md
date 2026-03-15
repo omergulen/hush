@@ -1,13 +1,36 @@
 ---
 name: hush
 description: >-
-  View token savings stats or add new compression filters.
+  Manage hush output compression — view stats, discover optimization opportunities, add filters, check failures.
   Use when the user asks about token savings, compression stats, or wants to add a filter.
 ---
 
 # Hush
 
 Manage the hush output compression system.
+
+## CLI
+
+Hush provides a single CLI entry point. Find it with:
+
+```bash
+# Plugin install
+$(find ~/.claude/plugins/cache/hush -name "hush" -type f 2>/dev/null | head -1) help
+
+# Standalone install
+~/.hush/hush help
+```
+
+Available commands:
+
+```bash
+hush stats [today|week|all] [--by-command]   # View token savings
+hush discover                                 # Find optimization opportunities
+hush filters list                             # Show active rules
+hush filters add <pattern> <strategy> [args]  # Add a new rule
+hush filters test <command>                   # Test which rule matches a command
+hush status                                   # Installation health check
+```
 
 ## Working with compressed output
 
@@ -21,12 +44,27 @@ When output is trimmed, you'll see breadcrumbs:
 
 Follow the `[Hint:]` to drill down — don't re-run the full command.
 
-## Working with JSON output
+## Failed command output
 
-When a command returns large JSON, don't re-fetch it all. Use `jq` to query specific paths:
+When a command fails and its output is compressed, the full uncompressed output is saved:
+
+```
+[Full output saved: /tmp/hush-last-fail.txt]
+```
+
+Read the saved file instead of re-running the failed command:
 
 ```bash
-# Inspect structure first
+cat /tmp/hush-last-fail.txt | head -100
+cat /tmp/hush-last-fail.txt | grep -E 'ERROR|FAIL'
+```
+
+## Working with JSON output
+
+When a command returns large JSON, hush shows the schema automatically. To query specific paths:
+
+```bash
+# Inspect structure
 <cmd> | jq 'keys'
 <cmd> | jq '.[0] | keys'
 <cmd> | jq 'type, length'
@@ -46,22 +84,13 @@ Always check the shape before requesting all the data.
 
 ## Working with repeated output
 
-When output contains many similar lines (build logs, download progress, CI output), don't read every line. Check the pattern and the final result:
-
-```bash
-# Instead of reading 500 "Downloading..." lines:
-<cmd> | tail -5
-
-# Instead of reading 200 "Compiling..." lines:
-<cmd> | grep -E '(error|warning|FAIL)'
-```
+Hush automatically collapses consecutive similar lines (build logs, downloads, etc.). When you see `(N similar lines collapsed)`, the repeated content was noise — focus on the unique lines around it.
 
 ## Working with test failures
 
 When a test run is compressed, only failing tests are shown. To get the full trace of a specific failure:
 
 ```bash
-# Re-run just the failing test
 pytest tests/test_auth.py::test_login -v
 cargo test auth::test_login -- --nocapture
 npm test -- --testNamePattern "login"
@@ -81,11 +110,10 @@ Use sparingly — only when compressed output is insufficient.
 
 ## Suggesting new filters
 
-If a command consistently produces large uncompressed output (no `[Compressed:]` breadcrumb despite long output), suggest adding a filter:
+If a command consistently produces large uncompressed output, suggest adding a filter:
 
-```
-# Format: PATTERN | STRATEGY | ARGS
-^my-command\b    | success_summary | 10
+```bash
+hush filters add '^my-command\b' success_summary 10
 ```
 
 Available strategies:
@@ -94,15 +122,3 @@ Available strategies:
 - `tail_only <N>` — always show last N lines
 - `head_tail <H> <T>` — first H + last T lines
 - `passthrough` — no compression
-
-Append to `~/.hush/filters.conf` (standalone) or the plugin's `bin/filters.conf`.
-
-## Stats
-
-View token savings:
-
-```bash
-~/.hush/stats.sh all
-~/.hush/stats.sh today
-~/.hush/stats.sh week --by-command
-```
