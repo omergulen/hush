@@ -10,7 +10,7 @@ Works as a **Claude Code plugin**, **Cursor plugin**, or **standalone install**.
 
 ```
 /plugin marketplace add omergulen/hush
-/plugin install hush@omergulen-hush
+/plugin install hush
 ```
 
 ### Cursor

@@ -1,0 +1,17 @@
+{
+  "name": "hush",
+  "owner": {
+    "name": "Ömer Gülen"
+  },
+  "metadata": {
+    "description": "Compresses CLI output to save LLM context window tokens",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "hush",
+      "source": ".",
+      "description": "Compresses CLI output to save LLM context window tokens. Only safe commands are auto-approved."
+    }
+  ]
+}
