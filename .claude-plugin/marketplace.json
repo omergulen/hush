@@ -14,7 +14,7 @@
       "author": {
         "name": "Ömer Gülen"
       },
-      "source": ".",
+      "source": "./plugins/hush",
       "category": "productivity"
     }
   ]

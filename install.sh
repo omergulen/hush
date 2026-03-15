@@ -96,10 +96,10 @@ fi
 echo "Scripts:"
 mkdir -p "$INSTALL_DIR"
 for file in compress.sh filters.conf stats.sh; do
-    cp "$REPO_DIR/bin/$file" "$INSTALL_DIR/$file"
+    cp "$REPO_DIR/plugins/hush/bin/$file" "$INSTALL_DIR/$file"
     ok "$INSTALL_DIR/$file"
 done
-cp "$REPO_DIR/hooks/hook.sh" "$INSTALL_DIR/hook.sh"
+cp "$REPO_DIR/plugins/hush/hooks/hook.sh" "$INSTALL_DIR/hook.sh"
 ok "$INSTALL_DIR/hook.sh"
 chmod +x "$INSTALL_DIR"/*.sh
 
@@ -144,7 +144,7 @@ fi
 # ─── Step 4: LLM instruction ───────────────────────────────────────────────
 echo ""
 echo "LLM instruction:"
-cp "$REPO_DIR/rules/hush-instruction.md" "$HOME/.claude/HUSH.md"
+cp "$REPO_DIR/plugins/hush/rules/hush-instruction.md" "$HOME/.claude/HUSH.md"
 ok "Installed HUSH.md"
 
 if [ -f "$CLAUDE_MD" ]; then
@@ -164,7 +164,7 @@ fi
 if [ -d "$HOME/.cursor/rules" ]; then
     echo ""
     echo "Cursor:"
-    cp "$REPO_DIR/rules/hush.mdc" "$HOME/.cursor/rules/hush.mdc"
+    cp "$REPO_DIR/plugins/hush/rules/hush.mdc" "$HOME/.cursor/rules/hush.mdc"
     ok "Installed hush.mdc rule"
 fi
 

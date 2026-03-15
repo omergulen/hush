@@ -120,22 +120,23 @@ hush gives ~80% of the savings in ~800 lines of auditable bash. No binary, no te
 
 ```
 hush/
-├── bin/
-│   ├── compress.sh    (~330 lines)  Config-driven compression engine
-│   ├── filters.conf   (119 lines)   ~90 command patterns
-│   └── stats.sh       (97 lines)    Savings reporting
-├── hooks/
-│   ├── hooks.json                    Claude Code plugin hook config
-│   └── hook.sh                       Hook entry point (plugin + standalone)
-├── rules/
-│   ├── hush.mdc                      Cursor rule (LLM instruction)
-│   └── hush-instruction.md           Claude Code rule (LLM instruction)
-├── skills/
-│   └── hush/SKILL.md                 Stats & filter management skill
+├── .claude-plugin/marketplace.json   Claude Code marketplace index
+├── .cursor-plugin/marketplace.json   Cursor marketplace index
+├── plugins/hush/                     Plugin content
+│   ├── bin/
+│   │   ├── compress.sh               Config-driven compression engine
+│   │   ├── filters.conf              ~90 command patterns
+│   │   └── stats.sh                  Savings reporting
+│   ├── hooks/
+│   │   ├── hooks.json                Plugin hook config
+│   │   └── hook.sh                   Hook entry point
+│   ├── rules/
+│   │   ├── hush.mdc                  Cursor rule (LLM instruction)
+│   │   └── hush-instruction.md       Claude Code rule (LLM instruction)
+│   └── skills/
+│       └── hush/SKILL.md             Stats & filter management skill
 ├── test/
 │   └── run_tests.sh                  Test suite (61 tests)
-├── .claude-plugin/plugin.json        Claude Code plugin manifest
-├── .cursor-plugin/plugin.json        Cursor plugin manifest
 ├── install.sh                        Standalone installer
 └── README.md
 ```

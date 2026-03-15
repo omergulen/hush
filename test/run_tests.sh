@@ -8,9 +8,10 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-HOOK="$REPO_DIR/hooks/hook.sh"
-COMPRESS="$REPO_DIR/bin/compress.sh"
-STATS="$REPO_DIR/bin/stats.sh"
+PLUGIN_DIR="$REPO_DIR/plugins/hush"
+HOOK="$PLUGIN_DIR/hooks/hook.sh"
+COMPRESS="$PLUGIN_DIR/bin/compress.sh"
+STATS="$PLUGIN_DIR/bin/stats.sh"
 
 PASS=0
 FAIL=0

@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "hush",
-      "source": ".",
+      "source": "./plugins/hush",
       "description": "Compresses CLI output to save LLM context window tokens. Only safe commands are auto-approved."
     }
   ]
