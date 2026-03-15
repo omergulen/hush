@@ -9,24 +9,79 @@ description: >-
 
 Manage the hush output compression system.
 
-## Stats
+## Working with compressed output
 
-View token savings:
+When output is trimmed, you'll see breadcrumbs:
 
-```bash
-# All time
-~/.hush/stats.sh all
-
-# Today only
-~/.hush/stats.sh today
-
-# Last 7 days, broken down by command
-~/.hush/stats.sh week --by-command
+```
+[Compressed: 340 lines trimmed]
+[Full output: git diff]
+[Hint: git diff <specific-file> for the file you need]
 ```
 
-## Add a filter
+Follow the `[Hint:]` to drill down — don't re-run the full command.
 
-To compress a new command, append one line to `~/.hush/filters.conf`:
+## Working with JSON output
+
+When a command returns large JSON, don't re-fetch it all. Use `jq` to query specific paths:
+
+```bash
+# Inspect structure first
+<cmd> | jq 'keys'
+<cmd> | jq '.[0] | keys'
+<cmd> | jq 'type, length'
+
+# Extract specific fields
+<cmd> | jq '.results[0].message'
+<cmd> | jq '.items[] | {name, status}'
+
+# Filter by condition
+<cmd> | jq '.results[] | select(.status == "error")'
+
+# Count items
+<cmd> | jq '.results | length'
+```
+
+Always check the shape before requesting all the data.
+
+## Working with repeated output
+
+When output contains many similar lines (build logs, download progress, CI output), don't read every line. Check the pattern and the final result:
+
+```bash
+# Instead of reading 500 "Downloading..." lines:
+<cmd> | tail -5
+
+# Instead of reading 200 "Compiling..." lines:
+<cmd> | grep -E '(error|warning|FAIL)'
+```
+
+## Working with test failures
+
+When a test run is compressed, only failing tests are shown. To get the full trace of a specific failure:
+
+```bash
+# Re-run just the failing test
+pytest tests/test_auth.py::test_login -v
+cargo test auth::test_login -- --nocapture
+npm test -- --testNamePattern "login"
+```
+
+Don't re-run the entire suite — target the specific failure.
+
+## Bypass compression
+
+When full uncompressed output is genuinely needed, prefix the command:
+
+```bash
+HUSH_BYPASS=1 git diff
+```
+
+Use sparingly — only when compressed output is insufficient.
+
+## Suggesting new filters
+
+If a command consistently produces large uncompressed output (no `[Compressed:]` breadcrumb despite long output), suggest adding a filter:
 
 ```
 # Format: PATTERN | STRATEGY | ARGS
@@ -40,24 +95,14 @@ Available strategies:
 - `head_tail <H> <T>` — first H + last T lines
 - `passthrough` — no compression
 
-## How compressed output works
+Append to `~/.hush/filters.conf` (standalone) or the plugin's `bin/filters.conf`.
 
-When output is trimmed, the LLM sees breadcrumbs:
+## Stats
 
-```
-[Compressed: 340 lines trimmed]
-[Full output: git diff]
-[Hint: git diff <specific-file> for the file you need]
-```
-
-Follow the `[Hint:]` to drill down — don't re-run the full command.
-
-## Bypass compression
-
-When full uncompressed output is needed, prefix the command:
+View token savings:
 
 ```bash
-HUSH_BYPASS=1 git diff
+~/.hush/stats.sh all
+~/.hush/stats.sh today
+~/.hush/stats.sh week --by-command
 ```
-
-Use sparingly — only when compressed output is insufficient.
