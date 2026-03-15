@@ -14,7 +14,10 @@ set -euo pipefail
 
 SELF="$(readlink -f "$0" 2>/dev/null || python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$0")"
 SCRIPT_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+PLUGIN_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(cd "$PLUGIN_ROOT/../.." && pwd)"
 FILTERS_CONF="$SCRIPT_DIR/filters.conf"
+VERSION=$(cat "$REPO_ROOT/VERSION" 2>/dev/null || cat "$PLUGIN_ROOT/../../VERSION" 2>/dev/null || echo "unknown")
 
 cmd="${1:-help}"
 shift 2>/dev/null || true
@@ -115,8 +118,36 @@ case "$cmd" in
             echo "  + Last failure saved: $TEE_FILE ($size bytes)"
         fi
         ;;
+    upgrade)
+        echo "Upgrading hush..."
+        # Find the marketplace directory
+        MARKETPLACE_DIR=""
+        for d in "$HOME/.claude/plugins/marketplaces/hush" "$HOME/.claude/plugins/marketplaces/omergulen-hush"; do
+            [ -d "$d/.git" ] && MARKETPLACE_DIR="$d" && break
+        done
+        if [ -z "$MARKETPLACE_DIR" ]; then
+            # Standalone install — pull from repo origin
+            if [ -d "$REPO_ROOT/.git" ]; then
+                git -C "$REPO_ROOT" pull origin main 2>&1
+                echo ""
+                NEW_VERSION=$(cat "$REPO_ROOT/VERSION" 2>/dev/null || echo "unknown")
+                echo "Upgraded to v${NEW_VERSION}. Restart Claude Code to apply."
+            else
+                echo "Cannot upgrade: not a git repo and no marketplace found."
+                echo "Re-install from https://github.com/omergulen/hush"
+                exit 1
+            fi
+        else
+            git -C "$MARKETPLACE_DIR" pull origin main 2>&1
+            echo ""
+            echo "Marketplace updated. Run '/reload-plugins' in Claude Code to apply."
+        fi
+        ;;
+    version|--version|-v|-V)
+        echo "hush v${VERSION}"
+        ;;
     help|--help|-h)
-        echo "hush — CLI output compression for LLMs"
+        echo "hush v${VERSION} — CLI output compression for LLMs"
         echo ""
         echo "Usage:"
         echo "  hush stats [today|week|all] [--by-command]   View token savings"
@@ -125,6 +156,8 @@ case "$cmd" in
         echo "  hush filters add <pat> <strategy> [args]      Add a new rule"
         echo "  hush filters test <command>                   Test which rule matches"
         echo "  hush status                                   Check installation health"
+        echo "  hush version                                  Show version"
+        echo "  hush upgrade                                  Pull latest from GitHub"
         echo "  hush help                                     Show this help"
         ;;
     *)

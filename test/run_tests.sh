@@ -413,6 +413,9 @@ assert_contains "hush filters test no match" "generic" "$output"
 output=$("$HUSH" status 2>/dev/null)
 assert_contains "hush status works" "Filters" "$output"
 
+output=$("$HUSH" version 2>/dev/null)
+assert_contains "hush version works" "hush v" "$output"
+
 # ─── Summary ─────────────────────────────────────────────────────────────
 
 echo ""
