@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.0 (2026-03-15)
+
+### Features
+
+- **Tee mode** — saves full uncompressed output to `/tmp/hush-last-fail.txt` on command failure; breadcrumb includes path for LLM recovery
+- **Dedup** — collapses consecutive similar lines (build logs, downloads) by normalizing numbers/hashes
+- **JSON schema detection** — auto-detects JSON output, shows shape with types and array lengths, adds jq query hints
+- **Discover** — `hush discover` analyzes log for commands with low compression, suggests filter rules
+- **CLI wrapper** — `hush` command with subcommands: stats, discover, filters (list/add/test), status, version, upgrade
+- **Versioning** — `VERSION` file as single source of truth, `CHANGELOG.md`, `hush version`, `hush upgrade`
+
 ## 1.0.0 (2026-03-15)
 
 Initial release.
@@ -11,14 +22,9 @@ Initial release.
 - **Safe-list security model** — only known-safe commands are auto-approved; dangerous commands go through normal permission flow
 - **Metacharacter guards** — blocks compound commands (`&&`, `|`, `;`, `&`, `>`, `<`, `$()`, backticks)
 - **Env var blocklist** — blocks `LD_PRELOAD`, `PATH`, `DYLD_*`, etc. injection
-- **Tee mode** — saves full uncompressed output on failure to `/tmp/hush-last-fail.txt`
-- **Dedup** — collapses consecutive similar lines (build logs, downloads)
-- **JSON schema detection** — auto-detects JSON, shows shape + jq query hints
 - **Bypass** — `HUSH_BYPASS=1 <cmd>` for full uncompressed output
 - **Stats** — `hush stats today`, `hush stats week --by-command`
-- **Discover** — `hush discover` finds commands that would benefit from custom filters
-- **CLI wrapper** — `hush` command with stats, discover, filters, status subcommands
 - **LLM skill** — teaches the LLM to follow breadcrumbs, use jq for JSON, target specific test failures
-- **73 tests** — covers hook rewrites, guards, strategies, security regressions, all new features
+- **74 tests** — covers hook rewrites, guards, strategies, security regressions
 - **Plugin support** — Claude Code and Cursor marketplace manifests
 - **Standalone installer** — `./install.sh` with uninstall and status checks

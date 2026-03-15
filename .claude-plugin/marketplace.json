@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "hush",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Compresses CLI output to save LLM context window tokens",
   "owner": {
     "name": "Ömer Gülen"
@@ -10,7 +10,7 @@
     {
       "name": "hush",
       "description": "Compresses CLI output to save LLM context window tokens. Only safe commands are auto-approved.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": {
         "name": "Ömer Gülen"
       },
